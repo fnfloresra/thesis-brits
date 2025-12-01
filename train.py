@@ -90,27 +90,16 @@ def train_epoch(
 
         optimizer.zero_grad()
 
-        # Forward pass
-        if isinstance(model, BRITS):
-            result = model(
-                values=batch["values"],
-                masks=batch["masks"],
-                deltas=batch["deltas"],
-                evals=batch["evals"],
-                eval_masks=batch["eval_masks"],
-                labels=batch.get("label"),
-                is_train=batch.get("is_train"),
-            )
-        else:  # RITS
-            result = model(
-                values=batch["values"],
-                masks=batch["masks"],
-                deltas=batch["deltas"],
-                evals=batch["evals"],
-                eval_masks=batch["eval_masks"],
-                labels=batch.get("label"),
-                is_train=batch.get("is_train"),
-            )
+        # Forward pass (both BRITS and RITS share the same interface)
+        result = model(
+            values=batch["values"],
+            masks=batch["masks"],
+            deltas=batch["deltas"],
+            evals=batch["evals"],
+            eval_masks=batch["eval_masks"],
+            labels=batch.get("label"),
+            is_train=batch.get("is_train"),
+        )
 
         loss = result["loss"]
         loss.backward()
@@ -145,27 +134,16 @@ def evaluate(
         for batch in data_loader:
             batch = to_device(batch, device)
 
-            # Forward pass
-            if isinstance(model, BRITS):
-                result = model(
-                    values=batch["values"],
-                    masks=batch["masks"],
-                    deltas=batch["deltas"],
-                    evals=batch["evals"],
-                    eval_masks=batch["eval_masks"],
-                    labels=batch.get("label"),
-                    is_train=batch.get("is_train"),
-                )
-            else:  # RITS
-                result = model(
-                    values=batch["values"],
-                    masks=batch["masks"],
-                    deltas=batch["deltas"],
-                    evals=batch["evals"],
-                    eval_masks=batch["eval_masks"],
-                    labels=batch.get("label"),
-                    is_train=batch.get("is_train"),
-                )
+            # Forward pass (both BRITS and RITS share the same interface)
+            result = model(
+                values=batch["values"],
+                masks=batch["masks"],
+                deltas=batch["deltas"],
+                evals=batch["evals"],
+                eval_masks=batch["eval_masks"],
+                labels=batch.get("label"),
+                is_train=batch.get("is_train"),
+            )
 
             total_loss += result["loss"].item()
             n_batches += 1

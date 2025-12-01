@@ -278,13 +278,15 @@ class RITS(nn.Module):
         if labels is not None and self.label_weight > 0:
             y_h = self.out(h)
 
+            # Safely reshape labels to (batch_size, 1)
+            labels_reshaped = self._reshape_to_column(labels, batch_size)
+
             if is_train is not None:
-                labels = labels.view(-1, 1)
-                is_train = is_train.view(-1, 1)
-                y_loss = F.binary_cross_entropy_with_logits(y_h, labels, reduction="none")
-                y_loss = torch.sum(y_loss * is_train) / (torch.sum(is_train) + 1e-5)
+                is_train_reshaped = self._reshape_to_column(is_train, batch_size)
+                y_loss = F.binary_cross_entropy_with_logits(y_h, labels_reshaped, reduction="none")
+                y_loss = torch.sum(y_loss * is_train_reshaped) / (torch.sum(is_train_reshaped) + 1e-5)
             else:
-                y_loss = F.binary_cross_entropy_with_logits(y_h, labels.view(-1, 1))
+                y_loss = F.binary_cross_entropy_with_logits(y_h, labels_reshaped)
 
             result["predictions"] = torch.sigmoid(y_h)
             result["y_loss"] = y_loss * self.label_weight
@@ -299,8 +301,32 @@ class RITS(nn.Module):
         if eval_masks is not None:
             result["eval_masks"] = eval_masks
         if labels is not None:
-            result["labels"] = labels.view(-1, 1) if labels.dim() == 1 else labels
+            result["labels"] = self._reshape_to_column(labels, batch_size)
         if is_train is not None:
-            result["is_train"] = is_train.view(-1, 1) if is_train.dim() == 1 else is_train
+            result["is_train"] = self._reshape_to_column(is_train, batch_size)
 
         return result
+
+    def _reshape_to_column(self, tensor: torch.Tensor, batch_size: int) -> torch.Tensor:
+        """
+        Safely reshape a tensor to a column vector (batch_size, 1).
+
+        Args:
+            tensor: Input tensor
+            batch_size: Expected batch size
+
+        Returns:
+            Tensor of shape (batch_size, 1)
+        """
+        if tensor.dim() == 0:
+            # Scalar - expand to column
+            return tensor.unsqueeze(0).unsqueeze(1).expand(batch_size, 1)
+        elif tensor.dim() == 1:
+            # 1D - add column dimension
+            return tensor.view(-1, 1)
+        elif tensor.dim() == 2 and tensor.shape[1] == 1:
+            # Already correct shape
+            return tensor
+        else:
+            # Flatten and reshape
+            return tensor.reshape(-1, 1)
